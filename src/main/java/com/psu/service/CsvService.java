@@ -21,13 +21,10 @@ import java.util.List;
 @Service
 public class CsvService {
 
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy");
+    private final Logger log = LoggerFactory.getLogger(CsvService.class);
     @Autowired
     private DataRecordRepository dataRecordRepository;
-
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy");
-
-    private final Logger log = LoggerFactory.getLogger(CsvService.class);
-
 
     public void uploadCsvFile(MultipartFile file) {
         try (InputStreamReader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8);
@@ -50,10 +47,6 @@ public class CsvService {
 
 
     private DataRecord mapToDataRecord(CSVRecord csvRecord) {
-        String code = csvRecord.get("code").replace("\"", "").trim();
-        if (code.isEmpty()) {
-            throw new RuntimeException("Invalid content: 'code' field is empty");
-        }
         DataRecord record = new DataRecord();
         record.setSource(csvRecord.get("source"));
         record.setCodeListCode(csvRecord.get("codeListCode"));
