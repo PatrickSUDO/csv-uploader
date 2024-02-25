@@ -3,6 +3,9 @@ package com.psu.service;
 import com.psu.model.DataRecord;
 import com.psu.repository.DataRecordRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +16,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,12 +30,19 @@ public class CsvService {
 
     private final Logger log = LoggerFactory.getLogger(CsvService.class);
 
-    public void uploadCsvFile(MultipartFile file) {
-        try (BufferedReader fileReader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
-            List<DataRecord> records = fileReader.lines().skip(1)
-                    .map(this::mapToDataRecord)
-                    .collect(Collectors.toList());
 
+    public void uploadCsvFile(MultipartFile file) {
+        try (InputStreamReader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8);
+             CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT
+                     .withFirstRecordAsHeader()
+                     .withIgnoreHeaderCase()
+                     .withTrim())) {
+
+            List<DataRecord> records = new ArrayList<>();
+            for (CSVRecord csvRecord : csvParser) {
+                DataRecord record = mapToDataRecord(csvRecord);
+                records.add(record);
+            }
             dataRecordRepository.saveAll(records);
         } catch (Exception e) {
             log.error("Failed to parse CSV file: ", e);
@@ -39,22 +50,30 @@ public class CsvService {
         }
     }
 
-    private DataRecord mapToDataRecord(String line) {
-        String[] columns = line.split(",", -1); // Handle missing values
-        DataRecord record = new DataRecord();
-        record.setSource(columns[0]);
-        record.setCodeListCode(columns[1]);
-        record.setCode(columns[2]);
-        record.setDisplayValue(columns[3]);
-        record.setLongDescription(columns[4]);
-        try {
-            record.setFromDate(!columns[5].isEmpty() ? dateFormat.parse(columns[5]) : null);
-            record.setToDate(!columns[6].isEmpty() ? dateFormat.parse(columns[6]) : null);
-        } catch (Exception e) {
-            log.error("Error parsing date: ", e);
-            throw new RuntimeException("Error parsing date: " + e.getMessage());
+
+    private DataRecord mapToDataRecord(CSVRecord csvRecord) {
+        String code = csvRecord.get("code").replace("\"", "").trim();
+        if (code.isEmpty()) {
+            throw new RuntimeException("Invalid content: 'code' field is empty");
         }
-        record.setSortingPriority(!columns[7].isEmpty() ? Integer.parseInt(columns[7]) : null);
+        DataRecord record = new DataRecord();
+        record.setSource(csvRecord.get("source"));
+        record.setCodeListCode(csvRecord.get("codeListCode"));
+        record.setCode(csvRecord.get("code"));
+        record.setDisplayValue(csvRecord.get("displayValue"));
+        record.setLongDescription(csvRecord.get("longDescription"));
+        try {
+            String fromDateStr = csvRecord.get("fromDate").trim();
+            String toDateStr = csvRecord.get("toDate").trim();
+            record.setFromDate(!fromDateStr.isEmpty() ? dateFormat.parse(fromDateStr) : null);
+            record.setToDate(!toDateStr.isEmpty() ? dateFormat.parse(toDateStr) : null);
+            if (!csvRecord.get("sortingPriority").isEmpty()) {
+                record.setSortingPriority(Integer.parseInt(csvRecord.get("sortingPriority")));
+            }
+        } catch (Exception e) {
+            log.error("Error parsing record: ", e);
+            // Handle or rethrow as needed
+        }
         return record;
     }
 

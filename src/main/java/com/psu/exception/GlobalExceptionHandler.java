@@ -12,47 +12,34 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-    // Handle file size limit exceeded exception
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<?> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex, WebRequest request) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", new Date());
-        response.put("message", "File size exceeds maximum limit!");
-        response.put("details", ex.getMessage());
-        return new ResponseEntity<>(response, HttpStatus.EXPECTATION_FAILED);
+        return buildErrorResponse(ex, "File size exceeds maximum limit!", HttpStatus.PAYLOAD_TOO_LARGE);
     }
 
-    // Handle entity not found exception
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<?> handleEntityNotFoundException(EntityNotFoundException ex, WebRequest request) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", new Date());
-        response.put("message", "The requested entity was not found");
-        response.put("details", ex.getMessage());
-        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+        return buildErrorResponse(ex, "The requested entity was not found", HttpStatus.NOT_FOUND);
     }
 
-    // Handle illegal argument exceptions
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<?> handleIllegalArgumentException(IllegalArgumentException ex, WebRequest request) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", new Date());
-        response.put("message", "Illegal argument");
-        response.put("details", ex.getMessage());
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        return buildErrorResponse(ex, "Illegal argument", HttpStatus.BAD_REQUEST);
     }
 
-    // Handle generic exceptions
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleGlobalException(Exception ex, WebRequest request) {
+        return buildErrorResponse(ex, "An error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    private ResponseEntity<?> buildErrorResponse(Exception ex, String message, HttpStatus status) {
         Map<String, Object> response = new HashMap<>();
         response.put("timestamp", new Date());
-        response.put("message", "An error occurred");
+        response.put("message", message);
         response.put("details", ex.getMessage());
-        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(response, status);
     }
 }

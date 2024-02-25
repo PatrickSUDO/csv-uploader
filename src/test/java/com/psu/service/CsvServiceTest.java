@@ -3,6 +3,7 @@ package com.psu.service;
 
 import com.psu.model.DataRecord;
 import com.psu.repository.DataRecordRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
@@ -14,6 +15,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -79,5 +82,17 @@ class CsvServiceTest {
 
         List<DataRecord> records = csvService.findAll();
         assertThat(records).hasSize(0);
+    }
+
+    @Test
+    void findByCode_whenRecordDoesNotExist_throwsEntityNotFoundException() {
+        String nonExistentCode = "nonexistent";
+        when(dataRecordRepository.findByCode(nonExistentCode)).thenReturn(Optional.empty());
+
+        Exception exception = assertThrows(EntityNotFoundException.class, () -> {
+            csvService.findByCode(nonExistentCode);
+        });
+
+        assertThat(exception.getMessage()).contains("The DataRecord not found with code: " + nonExistentCode);
     }
 }
